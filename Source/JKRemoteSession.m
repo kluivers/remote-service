@@ -68,6 +68,11 @@
 {
     NSLog(@"Found service: %@", aNetService);
     
+    NSData *textData = [aNetService TXTRecordData];
+    NSDictionary *serviceInfo = [NSNetService dictionaryFromTXTRecordData:textData];
+    
+    NSLog(@"Service info: %@", serviceInfo);
+    
     if (!moreComing && [self.delegate respondsToSelector:@selector(discoveredServersDidChangeForSession:)]) {
         [self.delegate discoveredServersDidChangeForSession:self];
     }
