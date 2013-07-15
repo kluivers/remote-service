@@ -11,5 +11,15 @@
 @class JKRemoteSession;
 
 @protocol JKRemoteSessionDelegate <NSObject>
+
+@optional
+
+#pragma mark - Server delegation
+
 - (void) remoteSessionDidReceiveConnectionRequest:(JKRemoteSession *)session;
+
+#pragma mark - Client delegation
+
+- (void) discoveredServersDidChangeForSession:(JKRemoteSession *)session;
+
 @end

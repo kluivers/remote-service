@@ -21,8 +21,20 @@ typedef NS_ENUM(NSInteger, JKRemoteSessionType) {
 @property(nonatomic, readonly) NSString *name;
 @property(nonatomic, readonly) JKRemoteSessionType type;
 
+/*!
+ * List of NSUUID's for discovered servers.
+ */
+@property(nonatomic, readonly) NSArray *discoveredServers;
+
+/*!
+ * session uuid as know by other peers
+ */
+@property(nonatomic, readonly) NSUUID *sessionUUID;
+
 @property(nonatomic, weak) id<JKRemoteSessionDelegate> delegate;
 
 - (id) initWithIdentifier:(NSString *)identifier displayName:(NSString *)name type:(JKRemoteSessionType)type;
+
+- (NSString *) nameForServerUUID:(NSUUID *)uuid;
 
 @end
