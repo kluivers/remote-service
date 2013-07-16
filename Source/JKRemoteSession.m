@@ -26,6 +26,8 @@
 @implementation JKRemoteSession {
     NSMutableArray *_services;
     NSMutableDictionary *_servers;
+    
+    NSData *_separatorData;
 }
 
 - (id) initWithIdentifier:(NSString *)identifier displayName:(NSString *)name type:(JKRemoteSessionType)type
@@ -33,6 +35,8 @@
     self = [super init];
     
     if (self) {
+        _separatorData = [@"\n<<MSG_END>>\n\n" dataUsingEncoding:NSUTF8StringEncoding];
+        
         _services = [NSMutableArray array];
         _servers = [NSMutableDictionary dictionary];
         
@@ -108,7 +112,17 @@
 
 - (void) sendData:(NSData *)data
 {
-    
+    if (self.type == JKRemoteSessionClient) {
+        [self.socket writeData:data withTimeout:10.0 tag:0];
+        [self.socket writeData:_separatorData withTimeout:10.0 tag:0];
+    } else {
+        // write data to all clients
+        /*
+        for (GCDAsyncSocket *client in self.clients) {
+            [self.socket writeData:data withTimeout:10.0 tag:0];
+            [self.socket writeData:_separatorData withTimeout:10.0 tag:0];
+        }*/
+    }
 }
 
 #pragma mark - Async socket delegation
@@ -116,6 +130,18 @@
 - (void) socket:(GCDAsyncSocket *)sock didConnectToHost:(NSString *)host port:(uint16_t)port;
 {
     NSLog(@"%s", __func__);
+    
+    // announce self
+    NSDictionary *announcement = @{@"sessionUUID": [self.sessionUUID UUIDString]};
+    
+    NSError *serializationError = nil;
+    NSData *announceData = [NSPropertyListSerialization dataWithPropertyList:announcement format:NSPropertyListBinaryFormat_v1_0 options:0 error:&serializationError];
+    if (!announceData) {
+        NSLog(@"Error: %@", serializationError);
+        return;
+    }
+    
+    [self sendData:announceData];
 }
 
 - (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err
