@@ -23,6 +23,8 @@
 
 @end
 
+#define ANNOUNCE_TAG 1
+
 @implementation JKRemoteSession {
     NSMutableArray *_services;
     NSMutableDictionary *_servers;
@@ -152,6 +154,26 @@
 - (void) socket:(GCDAsyncSocket *)sock didAcceptNewSocket:(GCDAsyncSocket *)newSocket
 {
     NSLog(@"%s", __func__);
+    
+    [newSocket readDataToData:_separatorData withTimeout:10.0 tag:ANNOUNCE_TAG];
+}
+
+- (void) socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
+{
+    NSLog(@"Incoming data length: %ld", [data length]);
+    
+    NSData *cleanData = [data subdataWithRange:NSMakeRange(0, [data length] - [_separatorData length])];
+    
+    if (tag == ANNOUNCE_TAG) {
+        NSError *error = nil;
+        NSDictionary *announce = [NSPropertyListSerialization propertyListWithData:cleanData options:NSPropertyListImmutable format:NULL error:&error];
+        if (!announce) {
+            NSLog(@"Deserialize error: %@", error);
+            return;
+        }
+        
+        NSLog(@"New client announcement: %@", announce);
+    }
 }
 
 #pragma mark - Browser delegate
