@@ -56,7 +56,13 @@
 
             [self.service publish];
             
-            // TODO: setup socket to accept connections
+            self.socket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+            
+            NSError *acceptError = nil;
+            BOOL acceptSuccess = [self.socket acceptOnPort:9009 error:&acceptError];
+            if (!acceptSuccess) {
+                NSLog(@"Failed to start listening on port: %@", acceptError);
+            }
         } else if (self.type == JKRemoteSessionClient) {
             self.browser = [[NSNetServiceBrowser alloc] init];
             self.browser.delegate = self;
@@ -115,6 +121,11 @@
 - (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err
 {
     NSLog(@"Did disconnect with error: %@", err);
+}
+
+- (void) socket:(GCDAsyncSocket *)sock didAcceptNewSocket:(GCDAsyncSocket *)newSocket
+{
+    NSLog(@"%s", __func__);
 }
 
 #pragma mark - Browser delegate
