@@ -41,8 +41,12 @@
         if (self.type == JKRemoteSessionServer) {
             self.service = [[NSNetService alloc] initWithDomain:@"" type:serviceType name:self.name port:9009];
             
-            NSDictionary *serviceInfo = @{@"sessionUUID": _sessionUUID};
-            [self.service setTXTRecordData:[NSNetService dataFromTXTRecordDictionary:serviceInfo]];
+            NSDictionary *serviceInfo = @{@"sessionUUID": [_sessionUUID UUIDString]};
+            NSLog(@"Service info: %@", serviceInfo);
+            BOOL success = [self.service setTXTRecordData:[NSNetService dataFromTXTRecordDictionary:serviceInfo]];
+            if (!success) {
+                NSLog(@"Failed to set TXT record data");
+            }
 
             [self.service publish];
             
