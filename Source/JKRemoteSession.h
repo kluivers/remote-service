@@ -37,4 +37,17 @@ typedef NS_ENUM(NSInteger, JKRemoteSessionType) {
 
 - (NSString *) nameForServerUUID:(NSUUID *)uuid;
 
+/*!
+ * Connect to a server
+ */
+- (void) connectTo:(NSUUID *)uuid withTimeout:(NSTimeInterval)timeout;
+
+/*!
+ * Sends data to the other end of the session. In case of a client session, 
+ * this will send to the server. In case of a server session this will send 
+ * to all clients.
+ */
+- (void) sendData:(NSData *)data;
+- (void) sendData:(NSData *)data toClient:(NSUUID *)client;
+
 @end

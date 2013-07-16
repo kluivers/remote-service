@@ -8,7 +8,9 @@
 
 #import "JKRemoteSession.h"
 
-@interface JKRemoteSession () <NSNetServiceBrowserDelegate>
+#import "GCDAsyncSocket.h"
+
+@interface JKRemoteSession () <NSNetServiceBrowserDelegate, NSNetServiceDelegate, GCDAsyncSocketDelegate>
 @property(nonatomic, strong) NSString *identifier;
 @property(nonatomic, strong) NSString *name;
 @property(nonatomic, strong) NSUUID *sessionUUID;
@@ -17,10 +19,13 @@
 @property(nonatomic, strong) NSNetService *service;
 @property(nonatomic, strong) NSNetServiceBrowser *browser;
 
+@property(nonatomic, strong) GCDAsyncSocket *socket;
+
 @end
 
 @implementation JKRemoteSession {
-    NSMutableArray *_servers;
+    NSMutableArray *_services;
+    NSMutableDictionary *_servers;
 }
 
 - (id) initWithIdentifier:(NSString *)identifier displayName:(NSString *)name type:(JKRemoteSessionType)type
@@ -28,7 +33,8 @@
     self = [super init];
     
     if (self) {
-        _servers = [NSMutableArray array];
+        _services = [NSMutableArray array];
+        _servers = [NSMutableDictionary dictionary];
         
         _sessionUUID = [NSUUID UUID];
         
@@ -59,7 +65,52 @@
 
 - (NSString *) nameForServerUUID:(NSUUID *)uuid
 {
-    return nil;
+    NSNetService *service = _servers[uuid];
+    return [service name];
+}
+
+- (NSArray *) discoveredServers
+{
+    return [_servers allKeys];
+}
+
+- (void) connectTo:(NSUUID *)uuid withTimeout:(NSTimeInterval)timeout
+{
+    NSNetService *server = _servers[uuid];
+    if (!server) {
+        return;
+    }
+    
+    NSLog(@"Connect to %@:%d", server.hostName, server.port);
+    
+    self.socket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+    
+    NSError *connectError = nil;
+    
+    NSData *address = [server addresses][0];
+    BOOL success = [self.socket connectToAddress:address withTimeout:timeout error:&connectError];
+    
+    if (!success) {
+        NSLog(@"Error connecting: %@", connectError);
+        return;
+    }
+}
+
+- (void) sendData:(NSData *)data
+{
+    
+}
+
+#pragma mark - Async socket delegation
+
+- (void) socket:(GCDAsyncSocket *)sock didConnectToHost:(NSString *)host port:(uint16_t)port;
+{
+    NSLog(@"%s", __func__);
+}
+
+- (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err
+{
+    NSLog(@"Did disconnect with error: %@", err);
 }
 
 #pragma mark - Browser delegate
@@ -67,14 +118,18 @@
 - (void) netServiceBrowser:(NSNetServiceBrowser *)aNetServiceBrowser didFindService:(NSNetService *)aNetService moreComing:(BOOL)moreComing
 {
     NSLog(@"Found service: %@", aNetService);
+    [_services addObject:aNetService];
     
-    NSData *textData = [aNetService TXTRecordData];
-    NSDictionary *serviceInfo = [NSNetService dictionaryFromTXTRecordData:textData];
-    
-    NSLog(@"Service info: %@", serviceInfo);
-    
-    if (!moreComing && [self.delegate respondsToSelector:@selector(discoveredServersDidChangeForSession:)]) {
-        [self.delegate discoveredServersDidChangeForSession:self];
+    if (!moreComing) {
+        [self resolveServices];
+    }
+}
+
+- (void) resolveServices
+{
+    for (NSNetService *service in _services) {
+        service.delegate = self;
+        [service resolveWithTimeout:5.0];
     }
 }
 
@@ -83,6 +138,25 @@
     NSLog(@"Remove service: %@", aNetService);
     
     if (!moreComing && [self.delegate respondsToSelector:@selector(discoveredServersDidChangeForSession:)]) {
+        [self.delegate discoveredServersDidChangeForSession:self];
+    }
+}
+
+- (void) netServiceDidResolveAddress:(NSNetService *)sender
+{
+    NSLog(@"Resolved service: %@", sender);
+    
+    NSData *textData = [sender TXTRecordData];
+    NSDictionary *serviceInfo = [NSNetService dictionaryFromTXTRecordData:textData];
+    
+    NSData *stringData = serviceInfo[@"sessionUUID"];
+    
+    NSString *uuidString = [[NSString alloc] initWithData:stringData encoding:NSUTF8StringEncoding];
+    
+    [_servers setObject:sender forKey:[[NSUUID alloc] initWithUUIDString:uuidString]];
+    [_services removeObject:sender];
+    
+    if ([self.delegate respondsToSelector:@selector(discoveredServersDidChangeForSession:)]) {
         [self.delegate discoveredServersDidChangeForSession:self];
     }
 }
