@@ -22,4 +22,8 @@
 
 - (void) discoveredServersDidChangeForSession:(JKRemoteSession *)session;
 
+#pragma mark - Messaging
+
+- (void) remoteSession:(JKRemoteSession *)session receivedData:(NSData *)data;
+
 @end

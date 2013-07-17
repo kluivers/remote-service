@@ -192,14 +192,9 @@
     }
     
     if (tag == MSG_TAG) {
-        NSError *error = nil;
-        NSDictionary *message = [NSPropertyListSerialization propertyListWithData:cleanData options:NSPropertyListImmutable format:NULL error:&error];
-        if (!message) {
-            NSLog(@"Deserialize error: %@", error);
-            return;
+        if ([self.delegate respondsToSelector:@selector(remoteSession:receivedData:)]) {
+            [self.delegate remoteSession:self receivedData:cleanData];
         }
-        
-        NSLog(@"Received message: %@", message);
     }
 
     [sock readDataToData:_separatorData withTimeout:-1 tag:MSG_TAG];
