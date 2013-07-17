@@ -24,10 +24,12 @@
 @end
 
 #define ANNOUNCE_TAG 1
+#define MSG_TAG 2
 
 @implementation JKRemoteSession {
     NSMutableArray *_services;
     NSMutableDictionary *_servers;
+    NSMutableDictionary *_clients;
     
     NSData *_separatorData;
 }
@@ -41,6 +43,7 @@
         
         _services = [NSMutableArray array];
         _servers = [NSMutableDictionary dictionary];
+        _clients = [NSMutableDictionary dictionary];
         
         _sessionUUID = [NSUUID UUID];
         
@@ -96,8 +99,6 @@
     if (!server) {
         return;
     }
-    
-    NSLog(@"Connect to %@:%d", server.hostName, server.port);
     
     self.socket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
     
@@ -172,8 +173,31 @@
             return;
         }
         
+        if (!announce[@"sessionUUID"]) {
+            [sock disconnect];
+            return;
+        }
+        
         NSLog(@"New client announcement: %@", announce);
+        
+        if (![self.delegate respondsToSelector:@selector(remoteSession:shouldAcceptClient:)]
+            || [self.delegate remoteSession:self shouldAcceptClient:announce]) {
+            // accept
+            
+            [_clients setObject:sock forKey:announce[@"sessionUUID"]];
+        } else {
+            [sock disconnect];
+            return;
+        }
     }
+    
+    if (tag == MSG_TAG) {
+        if ([self.delegate respondsToSelector:@selector(remoteSession:receivedData:)]) {
+            [self.delegate remoteSession:self receivedData:cleanData];
+        }
+    }
+
+    [sock readDataToData:_separatorData withTimeout:-1 tag:MSG_TAG];
 }
 
 #pragma mark - Browser delegate

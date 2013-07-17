@@ -16,10 +16,14 @@
 
 #pragma mark - Server delegation
 
-- (void) remoteSessionDidReceiveConnectionRequest:(JKRemoteSession *)session;
+- (BOOL) remoteSession:(JKRemoteSession *)session shouldAcceptClient:(NSDictionary *)announcement;
 
 #pragma mark - Client delegation
 
 - (void) discoveredServersDidChangeForSession:(JKRemoteSession *)session;
+
+#pragma mark - Messaging
+
+- (void) remoteSession:(JKRemoteSession *)session receivedData:(NSData *)data;
 
 @end
