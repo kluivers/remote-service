@@ -242,6 +242,7 @@
 - (void) netServiceBrowser:(NSNetServiceBrowser *)aNetServiceBrowser didRemoveService:(NSNetService *)aNetService moreComing:(BOOL)moreComing
 {
     NSLog(@"Remove service: %@", aNetService);
+    [_services removeObject:aNetService];
     
     if (!moreComing && [self.delegate respondsToSelector:@selector(discoveredServersDidChangeForSession:)]) {
         [self.delegate discoveredServersDidChangeForSession:self];
