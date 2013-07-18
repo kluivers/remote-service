@@ -48,6 +48,8 @@ typedef NS_ENUM(NSInteger, JKRemoteSessionType) {
  * to all clients.
  */
 - (void) sendData:(NSData *)data;
-- (void) sendData:(NSData *)data toClient:(NSUUID *)client;
+- (void) sendData:(NSData *)data toPeer:(NSUUID *)peer;
+
+- (void) setReceivedDataHandler:(void(^)(NSData *))dataHandler;
 
 @end
