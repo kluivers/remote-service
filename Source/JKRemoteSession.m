@@ -159,6 +159,7 @@
     }
     
     [self sendData:announceData];
+    [self.socket readDataToData:_separatorData withTimeout:-1 tag:MSG_TAG];
 }
 
 - (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err
@@ -175,7 +176,7 @@
 
 - (void) socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
 {
-    NSLog(@"Incoming data length: %ld", [data length]);
+    NSLog(@"Incoming data length: %d", [data length]);
     
     NSData *cleanData = [data subdataWithRange:NSMakeRange(0, [data length] - [_separatorData length])];
     
@@ -216,7 +217,13 @@
         }
     }
 
-    [sock readDataToData:_separatorData withTimeout:-1 tag:MSG_TAG];
+    if (self.type == JKRemoteSessionClient) {
+        [self.socket readDataToData:_separatorData withTimeout:-1 tag:MSG_TAG];
+    } else {
+        // server type, re-initiate read from socket we just received from
+        [sock readDataToData:_separatorData withTimeout:-1 tag:MSG_TAG];
+    }
+    
 }
 
 #pragma mark - Browser delegate
