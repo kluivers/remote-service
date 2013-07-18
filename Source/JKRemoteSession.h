@@ -52,6 +52,9 @@ typedef NS_ENUM(NSInteger, JKRemoteSessionType) {
 /*!
  * Sends data to a specific peer, identified by it's NSUUID.
  */
+
 - (void) sendData:(NSData *)data toPeer:(NSUUID *)peer;
+
+- (void) setReceivedDataHandler:(void(^)(NSData *))dataHandler;
 
 @end

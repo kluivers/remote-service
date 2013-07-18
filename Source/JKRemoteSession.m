@@ -32,6 +32,8 @@
     NSMutableDictionary *_clients;
     
     NSData *_separatorData;
+    
+    void(^_dataHandler)(NSData *);
 }
 
 - (id) initWithIdentifier:(NSString *)identifier displayName:(NSString *)name type:(JKRemoteSessionType)type
@@ -93,6 +95,11 @@
     return [_servers allKeys];
 }
 
+- (void) setReceivedDataHandler:(void(^)(NSData *))dataHandler
+{
+    _dataHandler = dataHandler;
+}
+
 - (void) connectTo:(NSUUID *)uuid withTimeout:(NSTimeInterval)timeout
 {
     NSNetService *server = _servers[uuid];
@@ -120,12 +127,19 @@
         [self.socket writeData:_separatorData withTimeout:10.0 tag:0];
     } else {
         // write data to all clients
-        /*
-        for (GCDAsyncSocket *client in self.clients) {
-            [self.socket writeData:data withTimeout:10.0 tag:0];
-            [self.socket writeData:_separatorData withTimeout:10.0 tag:0];
-        }*/
+        
+        for (id key in [_clients allKeys]) {
+            [self sendData:data toPeer:key];
+        }
     }
+}
+
+- (void) sendData:(NSData *)data toPeer:(NSUUID *)peer
+{
+    GCDAsyncSocket *client = [_clients objectForKey:peer];
+    
+    [client writeData:data withTimeout:10.0 tag:0];
+    [client writeData:_separatorData withTimeout:10.0 tag:0];
 }
 
 #pragma mark - Async socket delegation
@@ -173,7 +187,8 @@
             return;
         }
         
-        if (!announce[@"sessionUUID"]) {
+        NSUUID *sessionUUID = [[NSUUID alloc] initWithUUIDString:announce[@"sessionUUID"]];
+        if (!sessionUUID) {
             [sock disconnect];
             return;
         }
@@ -184,7 +199,11 @@
             || [self.delegate remoteSession:self shouldAcceptClient:announce]) {
             // accept
             
-            [_clients setObject:sock forKey:announce[@"sessionUUID"]];
+            [_clients setObject:sock forKey:sessionUUID];
+            
+            if ([self.delegate respondsToSelector:@selector(remoteSession:didConnectNewPeer:)]) {
+                [self.delegate remoteSession:self didConnectNewPeer:sessionUUID];
+            }
         } else {
             [sock disconnect];
             return;
@@ -192,8 +211,8 @@
     }
     
     if (tag == MSG_TAG) {
-        if ([self.delegate respondsToSelector:@selector(remoteSession:receivedData:)]) {
-            [self.delegate remoteSession:self receivedData:cleanData];
+        if (_dataHandler) {
+            _dataHandler(cleanData);
         }
     }
 
